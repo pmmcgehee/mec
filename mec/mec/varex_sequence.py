@@ -50,40 +50,59 @@ class VarexSequence(Sequence):
 
         self.events = []
 
+#
+# Dark - no XFEL or optical data
+#
     def dark(self, nframes):
         for i in range(nframes):
-# Trigger 66.67 ms VAREX readout
-            self.events.append([self.EC['varexreadout'], 0, 0, 0])
-# Perform DAQ readout at end of 10 Hz cycle
-            self.events.append([self.EC['daqreadout'], 12, 0, 0])
+# Trigger 66.67 ms VAREX readout if first event
+            if (not self.events):
+                self.events.append([self.EC['varexreadout'], 0, 0, 0])
+                
+# Perform VAREX and DAQ readout at end of 10 Hz cycle
+            self.events.append([self.EC['varexreadout'], 12, 0, 0])
+            self.events.append([self.EC['daqreadout'], 0, 0, 0])
 
+#
+# XFEL only data
+#
     def xray_only(self, nframes):
         for i in range(nframes):
-# Trigger 66.67 ms VAREX readout
-            self.events.append([self.EC['varexreadout'], 0, 0, 0])
+# Trigger 66.67 ms VAREX readout if first event
+            if (not self.events):
+                self.events.append([self.EC['varexreadout'], 0, 0, 0])
 # Open pulse picker (takes 2 beam delays)
             self.events.append([self.EC['pulsepicker'], 8, 0, 0])
 #
 # XFEL beam happens in this window
 #
-# Perform DAQ readout at end of 10 Hz cycle
-            self.events.append([self.EC['daqreadout'], 4, 0, 0])
+# Perform VAREX and DAQ readout at end of 10 Hz cycle
+            self.events.append([self.EC['varexreadout'], 4, 0, 0])
+            self.events.append([self.EC['daqreadout'], 0, 0, 0])
 
+#
+# XFEL and LPL data
 # This assumes that the PFNs are already charged.
+#
     def lpl_singleshot(self):
-# Trigger 66.67 ms VAREX readout
-        self.events.append([self.EC['varexreadout'], 0, 0, 0])
+# Trigger 66.67 ms VAREX readout if first event
+        if (not self.events):
+            self.events.append([self.EC['varexreadout'], 0, 0, 0])
 # Open pulse picker (takes 2 beam delays)
         self.events.append([self.EC['pulsepicker'], 8, 0, 0])
 #
 # XFEL beam and LPL shot happen here
 #
         self.events.append([self.EC['longpulse'], 2, 0, 0])
-# Perform DAQ readout at end of 10 Hz cycle
-        self.events.append([self.EC['daqreadout'], 2, 0, 0])
+# Perform XFEL and DAQ readout at end of 10 Hz cycle
+        self.events.append([self.EC['varexreadout'], 2, 0, 0])
+        self.events.append([self.EC['daqreadout'], 0, 0, 0])
 
 #
-# This list is returned by the VarexSequence constructor.
+# Create an event code sequence - 
+# This is called by the Laser._single_shot_plan() if any Varex data 
+# is requested in the Laser constructor, i.e. if
+# VarexPreDark + VarexPreX + VarexDuring + VarexPostDark > 0
 #
     def seq(self, npredark, nprex, nduring, npostdark):
         self.events = [] # Clear event list
@@ -107,7 +126,12 @@ class VarexSequence(Sequence):
 #
     def report_seq(self):
         total_bd = 0
+        iframe = 1
+
         for ev in self.events:
             total_bd = total_bd + ev[1]
             print("EC={0:3d} BD={1:4d} TOTAL BD={2:4d}".format(ev[0], ev[1],
                 total_bd))
+            if (ev[0] == 169):
+                print("Finished frame {0:3d}\n".format(iframe))
+                iframe = iframe + 1

@@ -59,9 +59,10 @@ class VarexSequence(Sequence):
             if (not self.events):
                 self.events.append([self.EC['varexreadout'], 0, 0, 0])
                 
-# Perform VAREX and DAQ readout at end of 10 Hz cycle
-            self.events.append([self.EC['varexreadout'], 12, 0, 0])
-            self.events.append([self.EC['daqreadout'], 0, 0, 0])
+# Perform DAQ readout at shot time (even when dark)
+# and VAREX eadout at end of 10 Hz cycle
+            self.events.append([self.EC['daqreadout'], 10, 0, 0])
+            self.events.append([self.EC['varexreadout'], 2, 0, 0])
 
 #
 # XFEL only data
@@ -75,10 +76,10 @@ class VarexSequence(Sequence):
             self.events.append([self.EC['pulsepicker'], 8, 0, 0])
 #
 # XFEL beam happens in this window
+            self.events.append([self.EC['daqreadout'], 2, 0, 0])
 #
-# Perform VAREX and DAQ readout at end of 10 Hz cycle
-            self.events.append([self.EC['varexreadout'], 4, 0, 0])
-            self.events.append([self.EC['daqreadout'], 0, 0, 0])
+# Perform VAREXreadout at end of 10 Hz cycle
+            self.events.append([self.EC['varexreadout'], 2, 0, 0])
 
 #
 # XFEL and LPL data
@@ -94,9 +95,10 @@ class VarexSequence(Sequence):
 # XFEL beam and LPL shot happen here
 #
         self.events.append([self.EC['longpulse'], 2, 0, 0])
+        self.events.append([self.EC['daqreadout'], 0, 0, 0])
+
 # Perform XFEL and DAQ readout at end of 10 Hz cycle
         self.events.append([self.EC['varexreadout'], 2, 0, 0])
-        self.events.append([self.EC['daqreadout'], 0, 0, 0])
 
 #
 # Create an event code sequence - 
@@ -126,12 +128,12 @@ class VarexSequence(Sequence):
 #
     def report_seq(self):
         total_bd = 0
-        iframe = 1
+        iframe = 0 
 
         for ev in self.events:
             total_bd = total_bd + ev[1]
             print("EC={0:3d} BD={1:4d} TOTAL BD={2:4d}".format(ev[0], ev[1],
                 total_bd))
-            if (ev[0] == 169):
+            if (ev[0] == 177):
                 print("Finished frame {0:3d}\n".format(iframe))
                 iframe = iframe + 1

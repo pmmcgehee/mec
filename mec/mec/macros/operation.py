@@ -635,7 +635,10 @@ def spl_check_front_alignment():
 
 
 # method to save multiple xray only shotsi and/or visar references
-def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, calibrant='', rate=1, visar=False, save=False, slow_cam=False):
+def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, calibrant='', rate=1, 
+        visar=False, save=False, slow_cam=False,
+        varex=False,
+        varex_skip=0, varex_predark=0, varex_prex=0):
     '''
     Description: script to take xray only events and/or VISAR references.
     IN:
@@ -649,6 +652,10 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
         rate       : rate used to take the reference, it is set to 1 by default bu is changed depending on the options (visar, calib)
 
         save       : True to save to the DAQ, False otherwise
+        varex           : True to use the VAREX sequencing
+        varex_skip     : Number of dark frames, no DAQ readout
+        varex_prerdark     : Number of dark frames, with DAQ readout
+        varex_prex        : Number of x-ray only frames
     OUT:
         execute the plan
     '''
@@ -750,6 +757,13 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     pp.flipflop()
     x.nsl.prex=xray_num
     x.nsl.during=0
+    # Setup for VAREX ref-only seequence
+    if (varex == True):
+        n.nsl._config['varexskip'] =  varex_skip
+        n.nsl._config['varexpredark'] =  varex_predark
+        n.nsl._config['varexprex'] =  varex_prex
+        n.nsl._config['varexduring'] = 0 
+        n.nsl._config['varexpostdark'] = 0
 #    att_update()
     SiT(xray_trans)
     if (daq_end == True):
@@ -765,7 +779,14 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     x.nsl._config['rate']=10
 
 # method to perform a pump-probe LPL shot
-def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, xray_threshold=0.1, xray_trans=1, prex=0, save=True, daq_end=True, msg='', ps_opt=True, arms='all', tags_words=['optical', 'sample'], uxi=False, auto_trig=False, auto_charge=False, visar=True, slow_cam=False, debug=True):
+def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9,
+        xray_threshold=0.1, xray_trans=1, prex=0, save=True, daq_end=True,
+        msg='', ps_opt=True, arms='all', tags_words=['optical', 'sample'],
+        uxi=False, auto_trig=False, auto_charge=False, visar=True,
+        slow_cam=False, debug=True,
+        varex=False,
+        varex_skip=0, varex_predark=0, varex_prex=0, varex_during=0,
+        varex_postdark=0):
     '''
     Description: script to shoot the optical laser and time it with the xrays. It automatically push to the elog the laser energy, the timing and the xray SiT transmission.
     IN:
@@ -787,6 +808,13 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
         visar           : True to check that the VISAR triggers are set properly.
         slow_cam        : Change the state of the configuration file for slow devices like cameras or gas jets
         debug           : True to enable debugging functions
+        varex           : True to use the VAREX sequencing
+        varex_skip      : Number of preshot dark frames, no DAQ readout
+        varex_predark   : Number of preshot dark frames, with DAQ readout
+        varex_prex      : Number of preshot x-ray only frames
+        varex_during    : Number of x-ray+LPL frames  (0 or 1)
+        varex_postdark  : Number of postshot dark frames, with DAQ readout
+
     OUT:
         execute the plan and post a comment to the elog.
     '''
@@ -872,6 +900,15 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9, 
     x.nsl.predark=0
     x.nsl.prex=prex
     x.nsl.during=1
+    # Setup for VAREX sequence
+    if (varex == True):
+        n.nsl.during = 0 # VAREX sequence sets when the LPL shot occurs
+        n.nsl._config['varexskip'] =  varex_skip
+        n.nsl._config['varexpredark'] =  varex_predark
+        n.nsl._config['varexprex'] =  varex_prex
+        n.nsl._config['varexduring'] =  varex_during
+        n.nsl._config['varexpostdark'] =  varex_postdark
+
     # to set the plan with the new configuration
     if (daq_end == True):
         p=x.nsl.shot(record=save, ps=ps_opt, end_run=True)
@@ -1512,15 +1549,15 @@ def pulse_picker(rate = 5):
 
 # rolling status definitions
 def ps():
-    if ((xpp_lodcm.get() >= -10.5) and (xpp_lodcm.get() <= -9.5)):
-        logger.success('XPP LODCM is OUT')
-    elif ((xpp_lodcm.get() >= -0.5) and (xpp_lodcm.get() <= 0.5)):
-        logger.warning('XPP LODCM is IN')
+#    if ((xpp_lodcm.get() >= -10.5) and (xpp_lodcm.get() <= -9.5)):
+#        logger.success('XPP LODCM is OUT')
+#    elif ((xpp_lodcm.get() >= -0.5) and (xpp_lodcm.get() <= 0.5)):
+#        logger.warning('XPP LODCM is IN')
 #    if (((xpp_ccm1.get() >= -0.5) and (xpp_ccm1.get() <= 0.5)) and ((xpp_ccm2.get() >= -0.5) and (xpp_ccm2.get() <= 0.5))):
 #        logger.success('XPP CCM is OUT')
 #    elif (((xpp_ccm1.get() >= -9.5) and (xpp_ccm1.get() <= -8.5)) and ((xpp_ccm2.get() >= -9.5) and (xpp_ccm2.get() <= -8.5))):
 #        logger.critical('XPP CCM is IN')
-    logger.warning('XPP CCM state unknown')
+#    logger.warning('XPP CCM state unknown')
     if (mec_bxl_valve.position == 'OUT'):
         logger.success('Gatevalve BXL:VGC:01 (XRT DCO) is OUT')
     elif (mec_bxl_valve.position == 'IN'):

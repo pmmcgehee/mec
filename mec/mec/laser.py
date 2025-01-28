@@ -17,6 +17,9 @@ from .sequence import Sequence
 #from mecps import *
 from meclas import *
 
+from mec.varex_sequence import VarexSequence
+LPLVarexSequence = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +27,10 @@ class Laser():
     """Base class for the MEC laser systems."""
     def __init__(self, Laser, Rate=5, PreDark=0, PreX=0, PreO=0, PostDark=0, PostX=0, 
                  PostO=0, During=1, PreLaserTrig=0, SlowCam=False,
-                 SlowCamDelay=5, Shutters=[1,2,3,4,5,6]):
+                 SlowCamDelay=5, Shutters=[1,2,3,4,5,6],
+                 VarexSkip=0,
+                 VarexPreDark=0, VarexPreX=0, 
+                 VarexDuring=0, VarexPostDark=0):
 
         self._config = {'laser': Laser,
                         'rate': int(Rate),
@@ -38,7 +44,12 @@ class Laser():
                         'prelasertrig': int(PreLaserTrig),
                         'slowcam': SlowCam,
                         'slowcamdelay': int(SlowCamDelay),
-                        'shutters': Shutters}
+                        'shutters': Shutters,
+                        'varexskip': int(VarexSkip),
+                        'varexpredark': int(VarexPreDark),
+                        'varexprex': int(VarexPreX),
+                        'varexduring': int(VarexDuring),
+                        'varexpostdark': int(VarexPostDark)}
         
         self._seq = Sequence()
         self._shutters = {1: shutter1, 
@@ -193,6 +204,57 @@ class Laser():
                 print("Unrecognized shutter {}. Skipping...".format(v))
         self._config['shutters'] = new_shutters
 
+    @property
+    def varexskip(self):
+        """The number of 'varex' skip frames to take at the start for a given 
+        sequence."""
+        return int(self._config['varexskip'])
+
+    @varexskip.setter
+    def varexskip(self, value):
+        self._config['varexskip'] = int(value)
+
+    @property
+    def varexpredark(self):
+        """The number of 'varex' dark shots to take at the start for a given 
+        sequence."""
+        return int(self._config['varexpredark'])
+
+    @varexpredark.setter
+    def varexpredark(self, value):
+        self._config['varexpredark'] = int(value)
+
+    @property
+    def varexprex(self):
+        """The number of 'varex' x-ray only shots to take for a given 
+        sequence."""
+        return int(self._config['varexprex'])
+
+    @varexprex.setter
+    def varexprex(self, value):
+        self._config['varexprex'] = int(value)
+
+    @property
+    def varexduring(self):
+        """The number of 'varex' optical + x-ray shots to take for a given 
+        sequence."""
+        return int(self._config['varexduring'])
+
+    @varexduring.setter
+    def varexduring(self, value):
+        self._config['varexduring'] = int(value)
+
+    @property
+    def varexpostdark(self):
+        """The number of 'varex' dark shots to take after a LPL shot for a given 
+        sequence."""
+        return int(self._config['varexpostdark'])
+
+    @varexpostdark.setter
+    def varexpostdark(self, value):
+        self._config['varexpostdark'] = int(value)
+
+
     def configure(self, conf):
         """Configure the laser for the given parameters.
 
@@ -215,7 +277,12 @@ class Laser():
                         'prelasertrig': <prelasertrig>,
                         'slowcam': <slowcam>,
                         'slowcamdelay': <slowcamdelay>,
-                        'shutters'= <shutters>}
+                        'shutters'= <shutters>,
+                        'varexskip': <varexskip>,
+                        'varexpredark': <varexpredark>,
+                        'varexprex': <varexprex>,
+                        'varexduring': <varexduring>,
+                        'varexpostdark': <varexpostdark>)
 
                 Default configuration:
                     Rate=5,
@@ -229,7 +296,12 @@ class Laser():
                     PreLaserTrig=0,
                     SlowCam=False,
                     SlowCamDelay=5,
-                    Shutters=[1,2,3,4,5,6]
+                    Shutters=[1,2,3,4,5,6],
+                    VarexSkip=0,
+                    VarexPreDark=0,
+                    VarexPreX=0,
+                    VarexDuring=0,
+                    VarexPostDark=0)
 
             This method can be given a subset of these parameters. The method
             will only apply recognized parameters that are supplied, and will
@@ -290,6 +362,22 @@ class Laser():
                 The shutters that must be closed prior to taking the laser shot.
                 This is used to protect cameras and other diagnostics from the
                 shot. Defaults to all shutters ([1,2,3,4,5,6]).        
+
+            VarexSkip : int
+                Record VAREX sequence dark (no laser, no XFEL) shots at beginning. 
+                No DAQ readout.
+
+            VarexPreDark : int
+                Record VAREX sequence dark (no laser, no XFEL) shots at beginning.
+
+            VarexPreX : int
+                Record VAREX sequence XFEL only shots at beginning.
+
+            VarexDuring : int
+                Record VAREX sequence laser + XFEL shots.
+
+            VarexPostDark : int
+                Record VAREX sequence dark (no laser, no XFEL) shots at end.
         """
 
         for key in conf.keys():
@@ -328,13 +416,36 @@ class Laser():
         # The intent is to avoid zero-event shots.
         WAITFORDAQ = 5 
 
+        # Total number of VAREX shots in a sequence
+        varex_daq_total =  self._config['varexpredark'] + \
+                           self._config['varexprex'] + \
+                           self._config['varexduring'] + \
+                           self._config['varexpostdark']
+        varex_total = varex_daq_total + self._config['varexskip']
+
+#
+# VAREX sequence takes control of all shots
+#
+        if (varex_total > 0):
+            print('Varex in use: removing any other requested shots')
+            self._config['preo'] = 0
+            self._config['during'] = 0
+            self._config['posto'] = 0
+
         # Make sure that any updates to configuration are applied
         self.configure(self._config)
 
         # Check number of shots for long pulse laser
         if self._config['laser'] == 'longpulse':
+            print("Requested shots:")
+            print('\tpreo = {}'.format(self._config['preo']))
+            print('\tduring = {}'.format(self._config['during']))
+            print('\tposto = {}'.format(self._config['posto']))
+            print('\tvarexduring = {}'.format(self._config['varexduring']))
+
             lpl_shots = self._config['preo'] + self._config['during'] + \
-                        self._config['posto']
+                        self._config['posto'] + \
+                        self._config['varexduring']
 
             if lpl_shots > 1:
                 m = ("Cannot shoot the long pulse laser more than once in a "
@@ -346,7 +457,8 @@ class Laser():
         total_shots = self._config['predark'] + self._config['prex'] + \
                       self._config['preo'] + self._config['postdark'] + \
                       self._config['postx'] + self._config['posto'] + \
-                      self._config['during']
+                      self._config['during'] + \
+                      varex_total
 
         print("Configured for {} total shots.".format(total_shots))
         logging.debug("Total shots: {}".format(total_shots))
@@ -498,6 +610,38 @@ class Laser():
             print("Taking {} postdark shots ... ".format(shots))
             time.sleep(WAITFORDAQ)
             yield from bps.trigger_and_read(dets)
+
+        # VAREX (includes optical laser and XFEL combinations) shots
+        if varex_total > 0:
+            logging.debug("Configuring for {} varex shots".format(varex_total))
+#            yield from bps.configure(daq, events=shots)
+            daq._config['events'] = varex_total  - self._config['varexskip']
+
+            # VAREX sequence 
+            vx = VarexSequence()
+            varex_seq = vx.seq(
+                    self._config['varexskip'], 
+                    self._config['varexpredark'], 
+                    self._config['varexprex'],
+                    self._config['varexduring'],
+                    self._config['varexpostdark'])
+            vx.report_seq()
+            LPLVarexSequence = vx
+
+            seq.sequence.put_seq(varex_seq)
+
+            # Number of shots is determined by sequencer, so just take 1 count
+            print("Taking {} varex shots ... ".format(varex_total))
+
+            # Send arm command to psmeclogin
+            arm_status = vx.arm()
+            if (arm_status):
+                print("starting varex shots after {} seconds".format(WAITFORDAQ))
+                time.sleep(WAITFORDAQ)
+                yield from bps.trigger_and_read(dets)
+                print("trigger_and_read completed")
+            else:
+                print("arm failed, aborting trigger_and_read")
 
         for det in dets:
             # unstaging the daq ends the run

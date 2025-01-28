@@ -422,11 +422,26 @@ class Laser():
                            self._config['varexpostdark']
         varex_total = varex_daq_total + self._config['varexskip']
 
+#
+# VAREX sequence takes control of all shots
+#
+        if (varex_total > 0):
+            print('Varex in use: removing any other requested shots')
+            self._config['preo'] = 0
+            self._config['during'] = 0
+            self._config['posto'] = 0
+
         # Make sure that any updates to configuration are applied
         self.configure(self._config)
 
         # Check number of shots for long pulse laser
         if self._config['laser'] == 'longpulse':
+            print("Requested shots:")
+            print('\tpreo = {}'.format(self._config['preo']))
+            print('\tduring = {}'.format(self._config['during']))
+            print('\tposto = {}'.format(self._config['posto']))
+            print('\tvarexduring = {}'.format(self._config['varexduring']))
+
             lpl_shots = self._config['preo'] + self._config['during'] + \
                         self._config['posto'] + \
                         self._config['varexduring']
@@ -609,17 +624,17 @@ class Laser():
                     self._config['varexprex'],
                     self._config['varexduring'],
                     self._config['varexpostdark'])
-
+            vx.report_seq()
             seq.sequence.put_seq(varex_seq)
 
             # Number of shots is determined by sequencer, so just take 1 count
             print("Taking {} varex shots ... ".format(varex_total))
-            time.sleep(WAITFORDAQ)
 
             # Send arm command to psmeclogin
             arm_status = vx.arm()
             if (arm_status):
-                print("starting varex shots")
+                print("starting varex shots after {} seconds".format(WAITFORDAQ))
+                time.sleep(WAITFORDAQ)
                 yield from bps.trigger_and_read(dets)
                 print("trigger_and_read completed")
             else:

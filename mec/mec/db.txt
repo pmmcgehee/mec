@@ -6,7 +6,7 @@ initialization. If you wish to use devices from this file, import
 them from mec.db after calling the mecpython startup script.
 
 
-hutch-python last loaded on 2025-01-21 13:34:19.133064
+hutch-python last loaded on 2025-01-28 07:00:28.758105
 with the following objects:
 
 __doc__              <class 'str'>
@@ -104,16 +104,6 @@ mec_beampath         <class 'lightpath.path.BeamPath'>
 archive              <class 'archapp.interactive.EpicsArchive'>
 camviewer            <class 'hutch_python.utils.HelpfulNamespace'>
 sim                  <class 'hutch_python.utils.HelpfulNamespace'>
-lpl_east_z           <class 'pcdsdevices.epics_motor.Newport'>
-lpl_east_x           <class 'pcdsdevices.epics_motor.Newport'>
-lpl_west_z           <class 'pcdsdevices.epics_motor.Newport'>
-lpl_west_y           <class 'pcdsdevices.epics_motor.Newport'>
-lpl_east_y           <class 'pcdsdevices.epics_motor.Newport'>
-visar_z              <class 'pcdsdevices.epics_motor.Newport'>
-lpl_west_x           <class 'pcdsdevices.epics_motor.Newport'>
-visar_y              <class 'pcdsdevices.epics_motor.Newport'>
-visar_x              <class 'pcdsdevices.epics_motor.Newport'>
-zyla_x               <class 'pcdsdevices.epics_motor.Newport'>
 safe_load            <class 'function'>
 time                 <class 'module'>
 requests             <class 'module'>
@@ -183,8 +173,8 @@ uni_evr              <class 'mec.spl_modes.UniblitzEVRCH'>
 wt                   <class 'float'>
 spl_align            <class 'function'>
 spl_target           <class 'function'>
-x                    <class 'experiments.l1046223.User'>
-user                 <class 'experiments.l1046223.User'>
+x                    <class 'experiments.l1019923.User'>
+user                 <class 'experiments.l1019923.User'>
 motors               <class 'hutch_python.utils.HelpfulNamespace'>
 m                    <class 'hutch_python.utils.HelpfulNamespace'>
 slits                <class 'hutch_python.utils.HelpfulNamespace'>

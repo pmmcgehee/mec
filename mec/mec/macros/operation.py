@@ -32,6 +32,9 @@ from mec.sequence import *
 from mec.slowcams import *
 from mec.visar_bed import *
 
+from mec.varex_sequence import VarexSequence
+
+
 # using a function from Tyler's timing module for the VISAR streaks
 #from mec.mec_timing import TimingChannel
 
@@ -759,11 +762,11 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     x.nsl.during=0
     # Setup for VAREX ref-only seequence
     if (varex == True):
-        n.nsl._config['varexskip'] =  varex_skip
-        n.nsl._config['varexpredark'] =  varex_predark
-        n.nsl._config['varexprex'] =  varex_prex
-        n.nsl._config['varexduring'] = 0 
-        n.nsl._config['varexpostdark'] = 0
+        x.nsl._config['varexskip'] =  varex_skip
+        x.nsl._config['varexpredark'] =  varex_predark
+        x.nsl._config['varexprex'] =  varex_prex
+        x.nsl._config['varexduring'] = 0 
+        x.nsl._config['varexpostdark'] = 0
 #    att_update()
     SiT(xray_trans)
     if (daq_end == True):
@@ -774,6 +777,8 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     if (save == True):
         RunNumber = get_run_number(hutch='mec', timeout=10)
         mecl = elog.ELog({'experiment':experimentName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
+        if (varex == True):
+            msg = msg + 'Varex in use, ref parameters: skip={} predark={} prex={}'.format(varex_skip, varex_predark, varex_prex)
         mecl.post(msg, run=RunNumber, tags=tags_ref)
     # restore laser rep rate in case the next action does not involve the use of the following scripts (like shots from the hutch)
     x.nsl._config['rate']=10
@@ -902,12 +907,12 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9,
     x.nsl.during=1
     # Setup for VAREX sequence
     if (varex == True):
-        n.nsl.during = 0 # VAREX sequence sets when the LPL shot occurs
-        n.nsl._config['varexskip'] =  varex_skip
-        n.nsl._config['varexpredark'] =  varex_predark
-        n.nsl._config['varexprex'] =  varex_prex
-        n.nsl._config['varexduring'] =  varex_during
-        n.nsl._config['varexpostdark'] =  varex_postdark
+        x.nsl.during = 0 # VAREX sequence sets when the LPL shot occurs
+        x.nsl._config['varexskip'] =  varex_skip
+        x.nsl._config['varexpredark'] =  varex_predark
+        x.nsl._config['varexprex'] =  varex_prex
+        x.nsl._config['varexduring'] =  varex_during
+        x.nsl._config['varexpostdark'] = varex_postdark
 
     # to set the plan with the new configuration
     if (daq_end == True):
@@ -934,6 +939,8 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9,
     RunNumber = get_run_number(hutch='mec', timeout=10)
     mecl = elog.ELog({'experiment':experimentName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
     msg = msg + '{} arms, laser shot {}: laser energy is at {:.1f} % from max, delay is {:.2f} ns, SiT at {:.1f} %.'.format(arms, msg_log_target, 100.0 * lpl_ener, 1.0e9 * timing, 100.0 * xray_trans)
+    if (varex == True):
+        msg = msg + 'Varex in use, shot parameters: skip={} predark={} prex={} during={} postdark={}'.format(varex_skip, varex_predark, varex_prex, varex_during, varex_postdark)
     mecl.post(msg, run=RunNumber, tags=tags_words)
     # make sure the event sequencer is getting ready for the alignment mode of the VISAR by starting the event sequencer at 1Hz, and no need to touch the trigger as they are ready for this task
     x.start_seq(1)

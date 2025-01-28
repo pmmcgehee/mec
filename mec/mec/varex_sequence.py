@@ -41,6 +41,7 @@ from mec.sequence import Sequence
 import socket
 import json
 import pydaq
+from pcdsdaq.ext_scripts import *
 
 class VarexSequence(Sequence):
 
@@ -60,6 +61,13 @@ class VarexSequence(Sequence):
 # DAQ access
         self.daq = pydaq.Control('mec-daq', 0)
 
+# Initialize sequence parameters
+        self.delays(pp=10, daqshot=2, nextread=0)
+        self.nskip = 0 
+        self.npredark = 0 
+        self.nprex = 0 
+        self.nduring = 0 
+        self.npostdark = 0 
 #
 # Issue ARM command to VAREX PC via socket to psmeclogin
 #
@@ -74,10 +82,13 @@ class VarexSequence(Sequence):
                 self.clientsocket = None
                 return False
 
+# This returns the number of the last run since we haven't run the plan yet.
+        run_no = get_run_number(hutch='mec', timeout=10) + 1
+
         varex_payload = {
                 'command': 'arm',
-                'run_name' : str(self.daq.runnumber() + 1),
-                'num_skip_frames' : self.nskip,
+                'run_name' : str(run_no),
+                'num_skip_frames' : self.nskip+1,
                 'num_background_frames' : self.npredark,
                 'num_data_frames' :  self.nprex + self.nduring,
                 'includes_shot_frame' : (self.nduring > 0),
@@ -85,6 +96,7 @@ class VarexSequence(Sequence):
                 }
         vp = json.dumps(varex_payload).encode('utf-8')
 
+ 
         try:
             self.clientsocket.send(vp)
             resp = self.clientsocket.recv(64)
@@ -93,12 +105,19 @@ class VarexSequence(Sequence):
             return False
 
         resp_str = resp.decode()
-        if resp_str == 'NOT OK':
-            print('Process on psmeclogin reported problems')
+        if resp_str != 'OK':
+            print('Process on psmeclogin reported a problem: {}.'.format(resp_str))
             return False
 
         return True
 
+#
+# Configure sequence beam delays
+#
+    def delays(self, pp=8, daqshot=2, nextread=2):
+        self.ppdelay = pp
+        self.daqdelay = daqshot
+        self.nextdelay = nextread
 #
 #
 # Skip - no XFEL or optical data and no DAQ readout
@@ -109,8 +128,9 @@ class VarexSequence(Sequence):
             if (not self.events):
                 self.events.append([self.EC['varexreadout'], 0, 0, 0])
                 
-# VAREX readout at end of 10 Hz cycle
-            self.events.append([self.EC['varexreadout'], 12, 0, 0])
+# VAREX readout at end of requested cycle
+            self.events.append([self.EC['varexreadout'], 
+                self.ppdelay+self.daqdelay+self.nextdelay, 0, 0])
 #
 #
 # Dark - no XFEL or optical data
@@ -122,9 +142,11 @@ class VarexSequence(Sequence):
                 self.events.append([self.EC['varexreadout'], 0, 0, 0])
                 
 # Perform DAQ readout at shot time (even when dark)
-# and VAREX readout at end of 10 Hz cycle
-            self.events.append([self.EC['daqreadout'], 10, 0, 0])
-            self.events.append([self.EC['varexreadout'], 2, 0, 0])
+# and VAREX readout at end of requested cycle
+            self.events.append([self.EC['daqreadout'], 
+                self.ppdelay+self.daqdelay, 0, 0])
+            self.events.append([self.EC['varexreadout'], 
+                self.nextdelay, 0, 0])
 
 #
 # XFEL only data
@@ -135,13 +157,13 @@ class VarexSequence(Sequence):
             if (not self.events):
                 self.events.append([self.EC['varexreadout'], 0, 0, 0])
 # Open pulse picker (takes 2 beam delays)
-            self.events.append([self.EC['pulsepicker'], 8, 0, 0])
+            self.events.append([self.EC['pulsepicker'], self.ppdelay, 0, 0])
 #
 # XFEL beam happens in this window
-            self.events.append([self.EC['daqreadout'], 2, 0, 0])
+            self.events.append([self.EC['daqreadout'], self.daqdelay, 0, 0])
 #
-# Perform VAREX readout at end of 10 Hz cycle
-            self.events.append([self.EC['varexreadout'], 2, 0, 0])
+# Perform VAREX readout at end of requested cycle
+            self.events.append([self.EC['varexreadout'], self.nextdelay, 0, 0])
 
 #
 # XFEL and LPL data
@@ -152,15 +174,15 @@ class VarexSequence(Sequence):
         if (not self.events):
             self.events.append([self.EC['varexreadout'], 0, 0, 0])
 # Open pulse picker (takes 2 beam delays)
-        self.events.append([self.EC['pulsepicker'], 8, 0, 0])
+        self.events.append([self.EC['pulsepicker'], self.ppdelay, 0, 0])
 #
 # XFEL beam and LPL shot happen here
 #
-        self.events.append([self.EC['longpulse'], 2, 0, 0])
+        self.events.append([self.EC['longpulse'], self.daqdelay, 0, 0])
         self.events.append([self.EC['daqreadout'], 0, 0, 0])
 
-# Perform XFEL and DAQ readout at end of 10 Hz cycle
-        self.events.append([self.EC['varexreadout'], 2, 0, 0])
+# Perform XFEL and DAQ readout at end of requested cycle
+        self.events.append([self.EC['varexreadout'], self.nextdelay, 0, 0])
 
 #
 # Create an event code sequence - 
@@ -168,7 +190,7 @@ class VarexSequence(Sequence):
 # is requested in the Laser constructor, i.e. if
 # VarexPreDark + VarexPreX + VarexDuring + VarexPostDark > 0
 #
-    def seq(self, nskip, npredark, nprex, nduring, npostdark):
+    def seq(self, nskip=0, npredark=0, nprex=0, nduring=0, npostdark=0):
         self.events = [] # Clear event list
 
 # Store for future use
@@ -176,7 +198,7 @@ class VarexSequence(Sequence):
         self.npredark = npredark
         self.nprex = nprex
         self.nduring = nduring
-        self.npostdark =  npostdark
+        self.npostdark = npostdark
 
 # Pre-shot skip frames
         if nskip > 0: self.skip(nskip)

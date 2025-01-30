@@ -6,7 +6,7 @@ initialization. If you wish to use devices from this file, import
 them from mec.db after calling the mecpython startup script.
 
 
-hutch-python last loaded on 2025-01-28 07:00:28.758105
+hutch-python last loaded on 2025-01-29 15:57:20.781198
 with the following objects:
 
 __doc__              <class 'str'>
@@ -24,7 +24,6 @@ bpp                  <class 'hutch_python.utils.HelpfulNamespace'>
 calc                 <class 'hutch_python.utils.HelpfulNamespace'>
 daq                  <class 'pcdsdaq.daq.Daq'>
 scan_pvs             <class 'pcdsdaq.scan_vars.ScanVars'>
-elog                 <class 'elog.elog.HutchELog'>
 beam_stats           <class 'pcdsdevices.beam_stats.BeamStats'>
 lcls                 <class 'pcdsdevices.beam_stats.LCLS'>
 at1l0                <class 'pcdsdevices.attenuator.FeeAtt'>

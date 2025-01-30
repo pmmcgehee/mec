@@ -25,15 +25,12 @@ from mec.db import *
 from mec.db import mec_pulsepicker as pp
 from mec.beamline import *
 from mec.devices import *
-from mec.laser import *
+#from mec.laser import *
 from mec.laser_devices import *
 from mec.spl_modes import *
 from mec.sequence import *
 from mec.slowcams import *
 from mec.visar_bed import *
-
-from mec.varex_sequence import VarexSequence
-
 
 # using a function from Tyler's timing module for the VISAR streaks
 #from mec.mec_timing import TimingChannel
@@ -344,7 +341,18 @@ def pv_add(pv = ''):
 #http://pscaa01.slac.stanford.edu:17665/mgmt/bpl/changeArchivalParameters?pv=MEC:TC1:GPI:01:PMON&samplingmethod=SCAN&samplingperiod=5
 
 
-
+#
+# VAREX sequencer methods
+#
+def varex_test():
+    x.nsl._config['varex'] = True
+    x.nsl._config['varexskip'] = 0
+    x.nsl._config['varexpredark'] = 1 
+    x.nsl._config['varexprex'] = 1 
+    x.nsl._config['varexduring'] =  1
+    x.nsl._config['varexpostdark'] = 0 
+    print("calling x.nsl._fake_varex_shot()")
+    x.nsl._fake_varex_shot()
 
 #jj slit usage example:
 #    width = gap
@@ -641,7 +649,7 @@ def spl_check_front_alignment():
 def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, calibrant='', rate=1, 
         visar=False, save=False, slow_cam=False,
         varex=False,
-        varex_skip=0, varex_predark=0, varex_prex=0):
+        varex_skip=0, varex_predark=0, varex_prex=0, varex_postdark=0):
     '''
     Description: script to take xray only events and/or VISAR references.
     IN:
@@ -657,8 +665,9 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
         save       : True to save to the DAQ, False otherwise
         varex           : True to use the VAREX sequencing
         varex_skip     : Number of dark frames, no DAQ readout
-        varex_prerdark     : Number of dark frames, with DAQ readout
+        varex_predark     : Number of dark frames, with DAQ readout
         varex_prex        : Number of x-ray only frames
+        varex_postdark  : Number of postshot dark frames, with DAQ readout
     OUT:
         execute the plan
     '''
@@ -760,13 +769,13 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
     pp.flipflop()
     x.nsl.prex=xray_num
     x.nsl.during=0
-    # Setup for VAREX ref-only seequence
-    if (varex == True):
-        x.nsl._config['varexskip'] =  varex_skip
-        x.nsl._config['varexpredark'] =  varex_predark
-        x.nsl._config['varexprex'] =  varex_prex
-        x.nsl._config['varexduring'] = 0 
-        x.nsl._config['varexpostdark'] = 0
+    # Setup for VAREX ref-only sequence
+    x.nsl._config['varex'] =  varex
+    x.nsl._config['varexskip'] =  varex_skip
+    x.nsl._config['varexpredark'] =  varex_predark
+    x.nsl._config['varexprex'] =  varex_prex
+    x.nsl._config['varexduring'] = 0 
+    x.nsl._config['varexpostdark'] = varex_postdark 
 #    att_update()
     SiT(xray_trans)
     if (daq_end == True):
@@ -778,7 +787,8 @@ def ref_only(xray_trans=1, xray_num=10, shutters=False, dark=0, daq_end=True, ca
         RunNumber = get_run_number(hutch='mec', timeout=10)
         mecl = elog.ELog({'experiment':experimentName}, user='mecopr', pw=pickle.load(open('/reg/neh/operator/mecopr/mecpython/pulseshaping/elogauth.p', 'rb')))
         if (varex == True):
-            msg = msg + 'Varex in use, ref parameters: skip={} predark={} prex={}'.format(varex_skip, varex_predark, varex_prex)
+            msg = msg + 'Varex in use, ref parameters: skip={} predark={} prex={} postdark={}'.format(varex_skip, varex_predark, 
+                    varex_prex, varex_postdark)
         mecl.post(msg, run=RunNumber, tags=tags_ref)
     # restore laser rep rate in case the next action does not involve the use of the following scripts (like shots from the hutch)
     x.nsl._config['rate']=10
@@ -908,11 +918,12 @@ def optical_shot(shutter_close=[1, 2, 3, 4, 5, 6], lpl_ener=1.0, timing=0.0e-9,
     # Setup for VAREX sequence
     if (varex == True):
         x.nsl.during = 0 # VAREX sequence sets when the LPL shot occurs
-        x.nsl._config['varexskip'] =  varex_skip
-        x.nsl._config['varexpredark'] =  varex_predark
-        x.nsl._config['varexprex'] =  varex_prex
-        x.nsl._config['varexduring'] =  varex_during
-        x.nsl._config['varexpostdark'] = varex_postdark
+    x.nsl._config['varex'] =  varex
+    x.nsl._config['varexskip'] =  varex_skip
+    x.nsl._config['varexpredark'] =  varex_predark
+    x.nsl._config['varexprex'] =  varex_prex
+    x.nsl._config['varexduring'] =  varex_during
+    x.nsl._config['varexpostdark'] = varex_postdark
 
     # to set the plan with the new configuration
     if (daq_end == True):

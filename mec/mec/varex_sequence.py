@@ -61,13 +61,34 @@ class VarexSequence(Sequence):
 # DAQ access
         self.daq = pydaq.Control('mec-daq', 0)
 
-# Initialize sequence parameters
-        self.delays(pp=10, daqshot=2, nextread=0)
         self.nskip = 0 
         self.npredark = 0 
         self.nprex = 0 
         self.nduring = 0 
         self.npostdark = 0 
+
+        self.set_beampos(pp=10, daqshot=12, varex=12)
+
+# Summary counts
+        self.daq_frames = 0
+        self.total_frames = 0
+
+#
+# Convenience function to define frame sequences using
+# delta beams only.
+#
+    def set_beampos(self, pp=10, daqshot=12, varex=12):
+# Initialize sequence parameters
+        self.skip_frame = [['varexreadout',varex,0]]
+        self.dark_frame = [['daqreadout',daqshot,0],
+                           ['varexreadout',varex,0]]
+        self.xray_frame = [['pulsepicker',pp,0],
+                           ['daqreadout',daqshot,0],
+                           ['varexreadout',varex,0]]
+        self.shot_frame = [['pulsepicker',pp,0],
+                           ['longpulse',daqshot,0],
+                           ['daqreadout',daqshot,0],
+                           ['varexreadout',varex,0]]
 #
 # Issue ARM command to VAREX PC via socket to psmeclogin
 #
@@ -96,7 +117,6 @@ class VarexSequence(Sequence):
                 }
         vp = json.dumps(varex_payload).encode('utf-8')
 
- 
         try:
             self.clientsocket.send(vp)
             resp = self.clientsocket.recv(64)
@@ -112,77 +132,26 @@ class VarexSequence(Sequence):
         return True
 
 #
-# Configure sequence beam delays
+# Define a sequence with delta beams
 #
-    def delays(self, pp=8, daqshot=2, nextread=2):
-        self.ppdelay = pp
-        self.daqdelay = daqshot
-        self.nextdelay = nextread
-#
-#
-# Skip - no XFEL or optical data and no DAQ readout
-#
-    def skip(self, nframes):
-        for i in range(nframes):
-# Trigger 66.67 ms VAREX readout if first event
-            if (not self.events):
-                self.events.append([self.EC['varexreadout'], 0, 0, 0])
-                
-# VAREX readout at end of requested cycle
-            self.events.append([self.EC['varexreadout'], 
-                self.ppdelay+self.daqdelay+self.nextdelay, 0, 0])
-#
-#
-# Dark - no XFEL or optical data
-#
-    def dark(self, nframes):
-        for i in range(nframes):
-# Trigger 66.67 ms VAREX readout if first event
-            if (not self.events):
-                self.events.append([self.EC['varexreadout'], 0, 0, 0])
-                
-# Perform DAQ readout at shot time (even when dark)
-# and VAREX readout at end of requested cycle
-            self.events.append([self.EC['daqreadout'], 
-                self.ppdelay+self.daqdelay, 0, 0])
-            self.events.append([self.EC['varexreadout'], 
-                self.nextdelay, 0, 0])
+    def gendeltas(self, seq):
+        d1 = sorted(seq, key=lambda tup: tup[1]*3 + tup[2])
+        last_event_fiducial = 0
+        delseq = []
+        
+        for sd in d1: 
+            if not sd[0] in self.EC:
+                raise ValueError("Invalid event code name: {}".format(sd[0]))
+            if (sd[1] < 0) or (sd[2] < 0):
+                raise ValueError("Requested beam or fiducial position < 0")
+                return []
 
-#
-# XFEL only data
-#
-    def xray_only(self, nframes):
-        for i in range(nframes):
-# Trigger 66.67 ms VAREX readout if first event
-            if (not self.events):
-                self.events.append([self.EC['varexreadout'], 0, 0, 0])
-# Open pulse picker (takes 2 beam delays)
-            self.events.append([self.EC['pulsepicker'], self.ppdelay, 0, 0])
-#
-# XFEL beam happens in this window
-            self.events.append([self.EC['daqreadout'], self.daqdelay, 0, 0])
-#
-# Perform VAREX readout at end of requested cycle
-            self.events.append([self.EC['varexreadout'], self.nextdelay, 0, 0])
+            dfid = sd[1]*3 + sd[2]
+            d2 = dfid - last_event_fiducial
+            delseq.append([self.EC[sd[0]], d2//3, d2%3])
+            last_event_fiducial = dfid
 
-#
-# XFEL and LPL data
-# This assumes that the PFNs are already charged.
-#
-    def lpl_singleshot(self):
-# Trigger 66.67 ms VAREX readout if first event
-        if (not self.events):
-            self.events.append([self.EC['varexreadout'], 0, 0, 0])
-# Open pulse picker (takes 2 beam delays)
-        self.events.append([self.EC['pulsepicker'], self.ppdelay, 0, 0])
-#
-# XFEL beam and LPL shot happen here
-#
-        self.events.append([self.EC['longpulse'], self.daqdelay, 0, 0])
-        self.events.append([self.EC['daqreadout'], 0, 0, 0])
-
-# Perform XFEL and DAQ readout at end of requested cycle
-        self.events.append([self.EC['varexreadout'], self.nextdelay, 0, 0])
+        return delseq
 
 #
 # Create an event code sequence - 
@@ -191,7 +160,6 @@ class VarexSequence(Sequence):
 # VarexPreDark + VarexPreX + VarexDuring + VarexPostDark > 0
 #
     def seq(self, nskip=0, npredark=0, nprex=0, nduring=0, npostdark=0):
-        self.events = [] # Clear event list
 
 # Store for future use
         self.nskip = nskip
@@ -200,34 +168,33 @@ class VarexSequence(Sequence):
         self.nduring = nduring
         self.npostdark = npostdark
 
-# Pre-shot skip frames
-        if nskip > 0: self.skip(nskip)
+        try:
+            self.events = [[self.EC['varexreadout'],0,0]] + \
+                nskip * self.gendeltas(self.skip_frame) + \
+                npredark * self.gendeltas(self.dark_frame) + \
+                nprex * self.gendeltas(self.xray_frame) + \
+                nduring * self.gendeltas(self.shot_frame) + \
+                npostdark * self.gendeltas(self.dark_frame)
 
-# Pre-shot background frames
-        if npredark > 0: self.dark(npredark)
-
-# Pre-shot ambient frames
-        if nprex > 0: self.xray_only(nprex)
-
-# Do the shot!
-        if nduring == 1: self.lpl_singleshot()
-
-# Post-shot background frames
-        if npostdark > 0: self.dark(npostdark)
-
+            self.daq_frames = npredark + nprex + nduring + npostdark
+            self.total_frames = self.daq_frames + nskip
+        except Exception as e:
+            print(e)
+            print("Sequence creation failed, returning null events")
+            self.events = []
+        
         return self.events
 
 #
 # Output the event count, delta beam, and total delta beam
 #
     def report_seq(self):
-        total_bd = 0
+        total_fid = 0
         iframe = 0 
 
         for ev in self.events:
-            total_bd = total_bd + ev[1]
-            print("EC={0:3d} BD={1:4d} TOTAL BD={2:4d}".format(ev[0], ev[1],
-                total_bd))
+            total_fid = total_fid + ev[1]*3 + ev[2]
+            print("EC={0:3d} BD={1:4d} FD={2:3d} POSITION={3:4d}+{4:1d}".format(ev[0], ev[1], ev[2], total_fid//3, total_fid%3)) 
             if (ev[0] == 177):
                 print("Finished frame {0:3d}\n".format(iframe))
                 iframe = iframe + 1

@@ -345,6 +345,14 @@ def pv_add(pv = ''):
 # VAREX sequencer methods
 #
 def varex_test():
+
+    print("Test 1: Creating a test sequence to pass to the event sequencer.")
+    print("0 skip, 1 predark, 1 prex, 1 during, 0 postdark")
+    print("Using default event positions:")
+    print("\tpulse picket at 10 beams")
+    print("\tlaser and DAQ at 12 beams")
+    print("\tVarex reqadout at 12 beams")
+
     x.nsl._config['varex'] = True
     x.nsl._config['varexskip'] = 0
     x.nsl._config['varexpredark'] = 1 
@@ -353,6 +361,20 @@ def varex_test():
     x.nsl._config['varexpostdark'] = 0 
     print("calling x.nsl._fake_varex_shot()")
     x.nsl._fake_varex_shot()
+
+    print("\nTest 2: Customizing event positions")
+    print("pp=8 daqshot=10 varex=12")
+    print("1 during")
+    x.nsl._varex_seq.set_beampos(pp=8, daqshot=10, varex=12)
+    s = x.nsl._varex_seq.seq(nduring=1)
+    x.nsl._varex_seq.report_seq()
+
+    print("\nTest 3: Customizing a frame")
+    print("Changing a x-ray frame - see Example 3 on Confluence")
+    x.nsl._varex_seq.shot_frame = \
+    [['longpulse',12,0],['daqreadout',12,0],['varexreadout',12,0]]
+    s = x.nsl._varex_seq.seq(nduring=1)
+    x.nsl._varex_seq.report_seq()
 
 #jj slit usage example:
 #    width = gap

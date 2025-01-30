@@ -144,7 +144,6 @@ class VarexSequence(Sequence):
                 raise ValueError("Invalid event code name: {}".format(sd[0]))
             if (sd[1] < 0) or (sd[2] < 0):
                 raise ValueError("Requested beam or fiducial position < 0")
-                return []
 
             dfid = sd[1]*3 + sd[2]
             d2 = dfid - last_event_fiducial

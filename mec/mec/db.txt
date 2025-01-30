@@ -6,7 +6,7 @@ initialization. If you wish to use devices from this file, import
 them from mec.db after calling the mecpython startup script.
 
 
-hutch-python last loaded on 2025-01-29 15:57:20.781198
+hutch-python last loaded on 2025-01-29 16:46:34.890238
 with the following objects:
 
 __doc__              <class 'str'>

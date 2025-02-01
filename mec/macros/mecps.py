@@ -2950,7 +2950,7 @@ def psefc(JreqQ=0,AQQ=0.0):
     ##EXECUTE THIS FILE FIRST TO DETERMINE THE UPDATED WAVEFORM
 
 def psefc10Hz(pwt=0,numIterQ=50,AQQ=0.03,displayPlot=True,reloopPrompt=True,YFEbkgrdY=0):#was B; replaced when LeCroyA fixed
-    evrpv=EpicsSignal('EVR:MEC:USR01:TRIG7:TEC')
+    evrpv=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TEC')
     evrpv.put(43)
     psfpQ=psfilepath()   
     SSs=pickle.load(open(psfpQ+'SSs.p','rb'))
@@ -3198,10 +3198,10 @@ def psrefrwvfm(RecipeStrQ,numStepsQ=50,stepSizeQ=0.25,displayPlot=True,reloopPro
     pvMBCsetpt=EpicsSignal('MEC:LPL:MBC:01:AutoCalibration.VAL',write_pv='MEC:LPL:MBC:01:AutoCalibration') #QUAD=0,MIN=1,MAX=2
     pvMBCbias=EpicsSignal('MEC:LPL:MBC:01:BiasValue_RBV',write_pv='MEC:LPL:MBC:01:BiasValue')
     pvMBCfault=EpicsSignal('MEC:LPL:MBC:01:ErrorStatus',write_pv='MEC:LPL:MBC:01:ClearErrors')
-    pvlampEC=EpicsSignal('EVR:MEC:USR01:TRIG6:EC_RBV',write_pv='EVR:MEC:USR01:TRIG6:TEC')#lamp event code; needs 182
-    pvslicerEC=EpicsSignal('EVR:MEC:USR01:TRIG7:EC_RBV',write_pv='EVR:MEC:USR01:TRIG7:TEC')#slicer event code; needs 182
-    pvlampenable=EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL') #lamp enable;
-    pvslicerenable=EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL') #slicer enable;
+    pvlampEC=EpicsSignal('MEC:LAS:EVR:01:TRIG8:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG7:TEC')#lamp event code; needs 182
+    pvslicerEC=EpicsSignal('MEC:LAS:EVR:01:TRIG8:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG8:TEC')#slicer event code; needs 182
+    pvlampenable=EpicsSignal('MEC:LAS:EVR:01:TRIG7:TCTL') #lamp enable;
+    pvslicerenable=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL') #slicer enable;
     print('Loading timestamp: '+datetime.now().strftime('%A, %d. %B %Y %I:%M:%S%p'))
     #load and extract the pulse target from the desired recipe
     try:
@@ -3300,10 +3300,10 @@ def pspreshot():
     pvMBCsetpt=EpicsSignal('MEC:LPL:MBC:01:AutoCalibration.VAL',write_pv='MEC:LPL:MBC:01:AutoCalibration') #QUAD=0,MIN=1,MAX=2
     pvMBCbias=EpicsSignal('MEC:LPL:MBC:01:BiasValue_RBV',write_pv='MEC:LPL:MBC:01:BiasValue')
     pvMBCfault=EpicsSignal('MEC:LPL:MBC:01:ErrorStatus',write_pv='MEC:LPL:MBC:01:ClearErrors')
-    pvlampEC=EpicsSignal('EVR:MEC:USR01:TRIG6:EC_RBV',write_pv='EVR:MEC:USR01:TRIG6:TEC')#lamp event code; needs 182
-    pvslicerEC=EpicsSignal('EVR:MEC:USR01:TRIG7:EC_RBV',write_pv='EVR:MEC:USR01:TRIG7:TEC')#slicer event code; needs 182
-    pvlampenable=EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL') #lamp enable;
-    pvslicerenable=EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL') #slicer enable;
+    pvlampEC=EpicsSignal('MEC:LAS:EVR:01:TRIG7:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG7:TEC')#lamp event code; needs 182
+    pvslicerEC=EpicsSignal('MEC:LAS:EVR:01:TRIG8:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG8:TEC')#slicer event code; needs 182
+    pvlampenable=EpicsSignal('MEC:LAS:EVR:01:TRIG7:TCTL') #lamp enable;
+    pvslicerenable=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL') #slicer enable;
     prechk=True
     if not YFEoncheck(display=False):
         print('WARNING: YFE seems to be off... Attempting to turn on YFE...')
@@ -3376,8 +3376,8 @@ def pspreshot():
     #waveform pre-check? verify shutters are open?
 
 def pspostshot(save_flag_q=True,RunNumQQ=9000):
-    pvlampenable=EpicsSignal('EVR:MEC:USR01:TRIG6:TCTL') #lamp enable;
-    pvslicerenable=EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL') #slicer enable;
+    pvlampenable=EpicsSignal('MEC:LAS:EVR:01:TRIG7:TCTL') #lamp enable;
+    pvslicerenable=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL') #slicer enable;
     pvlampenable.put(0)
     pvslicerenable.put(0)
     pshostcheck()
@@ -3461,8 +3461,8 @@ def SHG_opt(armsQ='ABEFGHIJ'):#check for trace height;#All shutters must start i
     else:
         print('OK, I hope you know what you\'re doing!')
     HWPon('all',set_T=1)
-    pvslicerEC=EpicsSignal('EVR:MEC:USR01:TRIG7:EC_RBV',write_pv='EVR:MEC:USR01:TRIG7:TEC')#slicer event code; needs 43
-    pvslicerenable=EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL') #slicer enable; 0=off,1=on
+    pvslicerEC=EpicsSignal('MEC:LAS:EVR:01:TRIG8:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG8:TEC')#slicer event code; needs 43
+    pvslicerenable=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL') #slicer enable; 0=off,1=on
     pvMBCmode=EpicsSignal('MEC:LPL:MBC:01:RunningMode_RBV',write_pv='MEC:LPL:MBC:01:RunningMode')#AUTO=0,MAN=1
     armlist=['AB','EF','GH','IJ']
     #YFEoff();YFEon();
@@ -3612,8 +3612,8 @@ def HWP_opt(armsQ='ABEFGHIJ'):#check for trace height;#All shutters must start i
     else:
         print('OK, I hope you know what you\'re doing!')
     HWPon('all',set_T=1)
-    pvslicerEC=EpicsSignal('EVR:MEC:USR01:TRIG7:EC_RBV',write_pv='EVR:MEC:USR01:TRIG7:TEC')#slicer event code; needs 43
-    pvslicerenable=EpicsSignal('EVR:MEC:USR01:TRIG7:TCTL') #slicer enable; 0=off,1=on
+    pvslicerEC=EpicsSignal('MEC:LAS:EVR:01:TRIG8:EC_RBV',write_pv='MEC:LAS:EVR:01:TRIG8:TEC')#slicer event code; needs 43
+    pvslicerenable=EpicsSignal('MEC:LAS:EVR:01:TRIG8:TCTL') #slicer enable; 0=off,1=on
     pvMBCmode=EpicsSignal('MEC:LPL:MBC:01:RunningMode_RBV',write_pv='MEC:LPL:MBC:01:RunningMode')#AUTO=0,MAN=1
     armlist=['AB','EF','GH','IJ']
     #YFEoff();YFEon();

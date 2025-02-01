@@ -19,17 +19,17 @@ with safe_load('shutters'):
 
 with safe_load('chamber lights'):
     from .devices import LedLights
-    focusedchamberlight = LedLights("MEC:PR60:PWR:1:Outlet:1", name='focused chamber light')
+    chamberlight = LedLights("MEC:PR60:PWR:1:Outlet:1", name='focused chamber light')
     fronttargetlight = LedLights("MEC:PR60:PWR:1:Outlet:6", name='front target light')
     brightchamberlight = LedLights("MEC:PR60:PWR:1:Outlet:8", name='bright chamber light')
     #visarlight = LedLights("MEC:PR60:PWR:1:Outlet:8", name='visar light') # Not currently plugged in
     def lights_on():
-        focusedchamberlight.on()
+        chamberlight.on()
         fronttargetlight.on()
         brightchamberlight.on()
         #visarlight.on()
     def lights_off():
-        focusedchamberlight.off()
+        chamberlight.off()
         fronttargetlight.off()
         brightchamberlight.off()
         #visarlight.off()
@@ -70,11 +70,12 @@ with safe_load('event sequencer'):
 #    from pcdsdevices.sequencer import EventSequence
 
 with safe_load('slits'):
-    from pcdsdevices.slits import Slits
+    from pcdsdevices.slits import Slits, JJSlits
     slit1 = Slits('HXX:UM6:JAWS', name='slit1')
     slit2 = Slits('MEC:XT1:JAWS:US', name='slit2')
     slit3 = Slits('MEC:XT1:JAWS:DS', name='slit3')
     slit4 = Slits('MEC:XT2:JAWS', name='slit4')
+    slit5 = JJSlits('MEC:JJ:MMS', name='slit5')
 
 
 with safe_load('YAG screens'): # Also known as PIMs

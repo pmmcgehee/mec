@@ -231,6 +231,68 @@ class Sequence:
 
         return seq
 
+    def onlyXraySequence(self, nshots, preshot=True):
+        """Setup a dark X-ray sequence (XFEL only, no optical laser).
+
+        darkXraySequence(nshots, preshot=True)
+
+        Parameters
+        ----------
+        nshots : int
+            The number of events to take during the dark sequence.
+
+        preshot : bool
+            Set the mark event code. Uses pre-shot (EC 170) if True, 
+            post-shot (EC 171) if false.
+        """
+
+        seq = []
+
+        bd = int(120/self.rate) # Beam deltas per xray shot
+
+        # Decide what marker to use
+        if preshot:
+            mark = self.EC['prelaser'] 
+        else:
+            mark = self.EC['postlaser']
+
+        # Setup first shot
+        eventcodes = []
+        eventcodes.append([self.EC['pulsepicker'], 0])
+        eventcodes.append([mark, 0])
+        eventcodes.append([self.EC['daqreadout'], 0])
+        #if self.slowcam:
+        #    eventcodes.append([self.EC['slowcam'], self.slowcamdelay])
+        #if self.prelasertrig > 0:
+        #    eventcodes.append([self.EC['prelasertrig'], self.prelasertrig])
+
+        seq = generateSequence(eventcodes, bd)
+
+        if nshots > 1:
+            # Create sequence for all but last shot
+            eventcodes = []
+            eventcodes.append([self.EC['pulsepicker'], 0])
+            eventcodes.append([mark, 0])
+            eventcodes.append([self.EC['daqreadout'], 0])
+            #if self.prelasertrig > 0:
+            #    eventcodes.append([self.EC['prelasertrig'], self.prelasertrig])
+
+            s = generateSequence(eventcodes, bd)
+            s *= nshots-2
+            seq += s
+
+            # Add in the last shot
+            eventcodes = []
+            eventcodes.append([self.EC['pulsepicker'], 0])
+            eventcodes.append([mark, 0])
+            eventcodes.append([self.EC['daqreadout'], 0])
+            #if self.prelasertrig > 0:
+            #    eventcodes.append([self.EC['prelasertrig'], self.prelasertrig])
+
+            seq += generateSequence(eventcodes, bd)
+
+        return seq
+
     def opticalSequence(self, nshots, laser, preshot=True):
         """Set up an optical laser sequence (no XFEL, optical laser only).
 

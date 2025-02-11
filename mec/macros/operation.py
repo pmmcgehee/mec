@@ -3489,6 +3489,11 @@ def varex_visar_ref():
             varex=False, varex_skip=0, varex_predark=0, varex_prex=0,
             varex_postdark=0, varex_gain=1, varex_binning=1)
 
+def varex_long_xray_ref(SiT=0.1, skip=0, predark=0, prex=1, gain=1, binning=1):
+    x.nsl._varex_seq.xray_test()
+    varex_xray_ref(SiT=SiT, skip=skip, predark=predark, prex=prex, gain=1, binning=1)
+    x.nsl._varex_seq.set_beampos()
+
 def varex_xray_ref(SiT=0.1, skip=100, predark=50, prex=1, gain=1, binning=1):
     ref_only(xray_trans=SiT, xray_num=0, shutters=False, dark=0, daq_end=True,
             calibrant="", rate=10, visar=False, save=True, slow_cam=False,
@@ -3497,8 +3502,8 @@ def varex_xray_ref(SiT=0.1, skip=100, predark=50, prex=1, gain=1, binning=1):
             varex_binning=binning)
 
 def varex_optical_shot(Elaser=1.0, delay=0.0e-9, SiT=1.0, skip=100, gain=1,
-        binning=1):
-    optical_shot(lpl_ener=Elaser, timing=delay, xray_threshold=0.1,
+        binning=1, threshold=0.1):
+    optical_shot(lpl_ener=Elaser, timing=delay, xray_threshold=threshold,
             xray_trans=SiT, save=True, auto_charge=True, auto_trig=True,
             visar=True, varex=True, varex_skip=skip, varex_predark=0,
             varex_prex=0, varex_during=1, varex_postdark=0, varex_gain=gain,

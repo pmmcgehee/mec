@@ -125,10 +125,16 @@ class VarexSequence(Sequence):
                 return False
 
 # This returns the number of the last run since we haven't run the plan yet.
-            run_no = get_run_number(hutch='mec', timeout=10) + 1
+            try:
+                run_no = get_run_number(hutch='mec', timeout=10) + 1
+            except:
+                print("Failed to get run number, assuming this will be first one in experiment")
+                run_no = 1
 
             varex_payload = {
                 'command': 'arm',
+#                'experiment' : experimentName,
+                'experiment' : 'mecl1048223',
                 'run_name' : str(run_no),
                 'num_skip_frames' : self.nskip+1,
                 'num_background_frames' : self.npredark,
@@ -220,3 +226,50 @@ class VarexSequence(Sequence):
             if (ev[0] == 177):
                 print("Finished frame {0:3d}\n".format(iframe))
                 iframe = iframe + 1
+
+#
+# Custom sequences
+#
+    def xray_test(self):
+        self.set_beampos(varex=120)
+
+# 1 Hz, x-rays at 30 Hz, only final DAQ readout
+        self.xray_frame = self.xray_test_seq(total_beams=120,
+                beam_period = 4,
+                daq_beam_sampling = 0)
+
+    def reset(self):
+        self.set_beampos()
+
+    def xray_test_seq(self, total_beams=120, beam_period=4, daq_beam_sampling=0):
+        pp_delay = 2
+        varex_readout_time = 8
+        first_pp_beam = 10
+
+# check arguments
+        if total_beams < varex_readout_time:
+            raise ValueError("Sequence length is shorter than VAREX readout time")
+        if beam_period < 4:
+            raise ValueError("Maximum beam rate is 30 Hz (4 beams)")
+        if daq_beam_sampling < 0:
+            raise ValueError("DAQ read sampling must be >= 0")
+
+# how many pulses
+        npulses = (total_beams - first_pp_beam)//beam_period + 1
+        print("Defining long xray frame with {} pulses".format(npulses))
+
+# Create the sequence
+        xray_seq = []
+        varex_trigger = total_beams
+
+        for i in range(npulses):
+            pp_trigger = i*beam_period + 10
+            xray_seq.append(['pulsepicker', pp_trigger, 0])
+            if (daq_beam_sampling > 0) and (i % daq_beam_sampling == 0):
+                xray_seq.append(['daqreadout', pp_trigger + pp_delay, 0])
+
+        if daq_beam_sampling == 0:
+            xray_seq.append(['daqreadout', varex_trigger, 0])
+        xray_seq.append(['varexreadout', varex_trigger, 0])
+
+        return xray_seq

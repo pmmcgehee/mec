@@ -465,6 +465,7 @@ class User():
         time.sleep(5)
 
         for i in range(nrows):
+            self.grid.x.velocity.put(vel)
             if i != 0:
                 yield from bps.mvr(self.grid.y, y_distance)
             # Play the sequencer
@@ -476,7 +477,9 @@ class User():
             # Make sure the sequencer stopped
             seq.play_control.put(0) 
 
+            self.grid.x.velocity.put(3)
             yield from bps.mv(self.grid.x, start['x'])
+
 
         # Return to start
         print("Returning to starting position")
